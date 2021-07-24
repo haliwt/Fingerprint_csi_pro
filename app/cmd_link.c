@@ -99,7 +99,7 @@ static void runCmd(void);
 static void reportState(uint8_t stateCode);
 //static void reportState_debug(uint8_t stateCode);
 static void trigParameterUpdateImmediate(void);
-static void notifyStatusToHost(uint8_t lightNum,uint8_t lightNum_LR,uint8_t filterNum,uint8_t unionNum);
+static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum,uint8_t unionNum);
 
 
 
@@ -180,7 +180,14 @@ void cmdInit(void)
 	//HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
 	HAL_UART_Receive_IT(&BLE_USART,bleBuf,1);
 }
-
+/**************************************************************
+	**
+	*Function Name:void decode(void)
+	*Function: 
+	*Input Ref: 
+	*Return Ref:
+	*
+***************************************************************/
 void decode(void)
 {
 //	if(decodeFlag)
@@ -421,7 +428,7 @@ static void bleRunCmd(void)
 				{
 					//setCurrentLightOn();
 				}
-				//notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currLight_LR,currFilter,currUnion);
+				notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currFilter,currUnion);
 				return;
 			}
 			break;
@@ -444,7 +451,7 @@ static void bleRunCmd(void)
 		trigParameterUpdateImmediate();
 		break;
 	case 'G':	// 0x47,only get leds status
-		notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currLight_LR,currFilter,currUnion);
+		notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currFilter,currUnion);
 		break;
 	default:
 		break;
@@ -459,7 +466,7 @@ static void bleRunCmd(void)
 	*Return Ref:NO
 	*
 *********************************************************************************************************/
-static void notifyStatusToHost(uint8_t lightNum,uint8_t lightNum_LR,uint8_t filterNum,uint8_t unionNum)
+static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum,uint8_t unionNum)
 {
 	uint8_t i,crc=0xAA;
 
@@ -468,19 +475,18 @@ static void notifyStatusToHost(uint8_t lightNum,uint8_t lightNum_LR,uint8_t filt
 	bleOutputBuf[0]=BOARD_ADDR_BT;  //HEX:42 
 	bleOutputBuf[1]='L'; 	// leds status 'L' -HEX:4C
 	bleOutputBuf[2]=lightNum; //the first group LED number on or off 
-	bleOutputBuf[3]=lightNum_LR; //the auxiliary board left and right  //WT.EDIT 2021.04.23 
-	bleOutputBuf[4]=filterNum; //filter of number 
-	if(unionNum>8)
+	bleOutputBuf[3]=filterNum; //filter of number 
+	if(unionNum>7)
 	{
-		bleOutputBuf[5]=0xff;
-		bleOutputBuf[6]=unionNum-8;
+		bleOutputBuf[4]=0xff;
+		bleOutputBuf[5]=unionNum-8;
 	}
 	else
 	{
-		bleOutputBuf[5]=unionNum;
-		bleOutputBuf[6]=0xff;
+		bleOutputBuf[4]=unionNum;
+		bleOutputBuf[5]=0xff;
 	}
-	for(i=2;i<7;i++) crc ^= bleOutputBuf[i];
+	for(i=2;i<6;i++) crc ^= bleOutputBuf[i];
 	bleOutputBuf[i]= crc;	// checksum
 	bleTransferSize=i+1;
 

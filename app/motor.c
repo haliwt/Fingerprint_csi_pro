@@ -9,7 +9,7 @@
 #include "adc.h"
 #include "cmd_link.h"
 
-#define MOTOR_CTRL_TIMER		htim3
+#define MOTOR_CTRL_TIMER		htim2 //htim3
 #define STEP_DELAY_TIMER		htim16
 #define INHIBIT_DETECT_TIMER	htim17
 
@@ -117,7 +117,8 @@ void startMotor(uint8_t speed,uint8_t dir)
 
 	HAL_GPIO_WritePin(STEP_GPIO_Port, STEP_Pin, GPIO_PIN_RESET);	// reset step pin
 	//HAL_GPIO_WritePin(GATE_GPIO_Port, GATE_Pin, GPIO_PIN_RESET);	// reset gate pin
-	HAL_TIM_OC_Start_IT(&MOTOR_CTRL_TIMER,TIM_CHANNEL_1);
+	//HAL_TIM_OC_Start_IT(&MOTOR_CTRL_TIMER,TIM_CHANNEL_1);
+	HAL_TIM_OC_Start_IT(&MOTOR_CTRL_TIMER,TIM_CHANNEL_2);
 	needStopFlag=0;
 	preDelayForStall=0;
 	motorState=ACCELERATE;
