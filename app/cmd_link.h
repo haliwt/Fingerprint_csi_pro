@@ -12,8 +12,8 @@
 #define MAX_CMD_PARA_SIZE			8
 
 
-#define CMD_LINKER	 huart2
-#define BLE_USART	 huart1
+//#define CMD_LINKER	 huart2
+#define BLE_USART	 huart2
 
 #define BOARD_ADDR		0x43	// 'C' control board
 #define BOARD_ADDR_BT	0x42	// 'B' for BT link --blue transmit

@@ -9,8 +9,8 @@
 #include "motor.h"
 #include "cmd_link.h"
 
-#define CMD_LINKER	huart2
-#define BLE_USART	huart1
+//#define CMD_LINKER	huart2
+#define BLE_USART	huart2
 
 
 #define BOARD_ADDR	77	// 'M'
@@ -98,6 +98,10 @@ static uint8_t checkBleModuleAVDData(void);
 static void runCmd(void);
 static void reportState(uint8_t stateCode);
 //static void reportState_debug(uint8_t stateCode);
+static void trigParameterUpdateImmediate(void);
+static void notifyStatusToHost(uint8_t lightNum,uint8_t lightNum_LR,uint8_t filterNum,uint8_t unionNum);
+
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
@@ -125,6 +129,14 @@ static void initBtleModule(void)
 	}
 	HAL_UART_Abort(&BLE_USART);
 }
+/**************************************************************
+	**
+	*Function Name:static void bleRunCmd(void)
+	*Function: 
+	*Input Ref: 
+	*Return Ref:
+	*
+***************************************************************/
 static uint8_t checkBleModuleAVDData(void)
 {
 	HAL_StatusTypeDef ret;
@@ -160,22 +172,22 @@ void cmdInit(void)
 	needReportFlag_debug=0;
 	transOngoingFlag=0;
 	bleDecodeFlag=0; //bluetooth flag
-	HAL_UART_Abort(&CMD_LINKER);
+	//HAL_UART_Abort(&CMD_LINKER);
 	HAL_UART_Abort(&BLE_USART);
 	//HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
 	//bluetooth
 	initBtleModule();
-	HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
+	//HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
 	HAL_UART_Receive_IT(&BLE_USART,bleBuf,1);
 }
 
 void decode(void)
 {
-	if(decodeFlag)
-	{
-		decodeFlag=0;
-		runCmd();
-	}
+//	if(decodeFlag)
+//	{
+//		decodeFlag=0;
+//		runCmd();
+//	}
 	if(bleDecodeFlag) //bluetooth to UART
 	{
 		bleDecodeFlag=0;
@@ -195,7 +207,14 @@ void trigReportFlag_Debug(uint8_t stateCode)
 	returnCode=stateCode;
 }
 
-
+/**************************************************************
+	**
+	*Function Name:static void bleRunCmd(void)
+	*Function: 
+	*Input Ref: 
+	*Return Ref:
+	*
+***************************************************************/
 static void runCmd(void)
 {
 	uint8_t cmdType=inputCmd[0];
@@ -238,85 +257,17 @@ static void runCmd(void)
 		break;
 	}
 }
-
+/**************************************************************
+	**
+	*Function Name:static void bleRunCmd(void)
+	*Function: 
+	*Input Ref: 
+	*Return Ref:
+	*
+***************************************************************/
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if(huart==&CMD_LINKER)
-	{
-		switch(state)
-		{
-		case STATE_PREAMBLE1:
-			if(buf[0]=='M')
-				state=STATE_PREAMBLE2;
-			break;
-		case STATE_PREAMBLE2:
-			if(buf[0]=='X')
-			{
-				state=STATE_ADDR;
-			}
-			else
-				state=STATE_PREAMBLE1;
-			break;
-		case STATE_ADDR:
-			if(buf[0]==BOARD_ADDR)
-			{
-				state=STATE_CMD;
-			}
-			else
-				state=STATE_PREAMBLE1;
-			break;
-		case STATE_CMD:
-			inputCmd[0]=buf[0];
-			crcCheck = 0x55 ^ inputCmd[0];
-			//decodeFlag=1;
-			state=STATE_SIZE;
-			break;
-		case STATE_SIZE:
-			cmdSize=buf[0]-0x30;
-			if(cmdSize>MAX_CMD_PARA_SIZE)	// out of range
-			{
-				state=STATE_PREAMBLE1;
-			}
-			else if(cmdSize>0)
-			{
-				inputCmd[1]=cmdSize;
-				paraIndex=2;
-				crcCheck ^= buf[0];
-				state=STATE_PARA;
-			}
-			else	// no parameter
-			{
-				inputCmd[1]=0;
-				crcCheck ^= buf[0];
-				decodeFlag=1;
-				state=STATE_PREAMBLE1;
-			}
-			break;
-		case STATE_PARA:
-			crcCheck ^= buf[0];
-			inputCmd[paraIndex]=buf[0];
-			paraIndex++;
-			cmdSize--;
-			if(cmdSize==0)
-			{
-				decodeFlag=1;
-				state=STATE_PREAMBLE1;
-			}
-			break;
-		case STATE_CRC:
-			//if((crcCheck ^ buf[0])==0)
-			{
-				//decodeFlag=1;
-			}
-			state=STATE_PREAMBLE1;
-			break;
-		default:
-			state=STATE_PREAMBLE1;
-			decodeFlag=0;
-		}
-		HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
-	}
-	else if(huart==&BLE_USART) //蓝牙接收
+	if(huart==&BLE_USART) //蓝牙接收
 	{
 		switch(bleState)
 		{
@@ -386,7 +337,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 }
 
 
-
+/**************************************************************
+	**
+	*Function Name:static void bleRunCmd(void)
+	*Function: 
+	*Input Ref: 
+	*Return Ref:
+	*
+***************************************************************/
 static void reportState(uint8_t stateCode)
 {
 	//uint8_t i,crc;
@@ -405,7 +363,7 @@ static void reportState(uint8_t stateCode)
 	{
 		while(transOngoingFlag);
 		transOngoingFlag=1;
-		HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
+		//HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
 	}
 }
 void reportState_debug(uint8_t stateCode)
@@ -423,17 +381,17 @@ void reportState_debug(uint8_t stateCode)
 	{
 		while(transOngoingFlag);
 		transOngoingFlag=1;
-		HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
+		//HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
 	}
 }
-/****************************************************************************************************
-**
-*Function Name:static void bleRunCmd(void)
-*Function: 
-*Input Ref: 
-*Return Ref:
-*
-****************************************************************************************************/
+/**************************************************************
+	**
+	*Function Name:static void bleRunCmd(void)
+	*Function: 
+	*Input Ref: 
+	*Return Ref:
+	*
+***************************************************************/
 static void bleRunCmd(void)
 {
 //	uint8_t transfeSize=0;
@@ -483,31 +441,80 @@ static void bleRunCmd(void)
 		default:
 			break;
 		}
-		//trigParameterUpdateImmediate();
+		trigParameterUpdateImmediate();
 		break;
 	case 'G':	// 0x47,only get leds status
-		//notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currLight_LR,currFilter,currUnion);
+		notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currLight_LR,currFilter,currUnion);
 		break;
 	default:
 		break;
 	}
 }
+
+/**********************************************************************************************************
+	**
+	*Function Name:static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum,uint8_t unionNum)
+	*Function : 
+	*Input Ref:lightNum--LED ,filterNum -filter number, unionNum - smart menu number
+	*Return Ref:NO
+	*
+*********************************************************************************************************/
+static void notifyStatusToHost(uint8_t lightNum,uint8_t lightNum_LR,uint8_t filterNum,uint8_t unionNum)
+{
+	uint8_t i,crc=0xAA;
+
+	while(bleTransOngoingFlag);
+
+	bleOutputBuf[0]=BOARD_ADDR_BT;  //HEX:42 
+	bleOutputBuf[1]='L'; 	// leds status 'L' -HEX:4C
+	bleOutputBuf[2]=lightNum; //the first group LED number on or off 
+	bleOutputBuf[3]=lightNum_LR; //the auxiliary board left and right  //WT.EDIT 2021.04.23 
+	bleOutputBuf[4]=filterNum; //filter of number 
+	if(unionNum>8)
+	{
+		bleOutputBuf[5]=0xff;
+		bleOutputBuf[6]=unionNum-8;
+	}
+	else
+	{
+		bleOutputBuf[5]=unionNum;
+		bleOutputBuf[6]=0xff;
+	}
+	for(i=2;i<7;i++) crc ^= bleOutputBuf[i];
+	bleOutputBuf[i]= crc;	// checksum
+	bleTransferSize=i+1;
+
+	if(HAL_UART_Transmit_IT(&BLE_USART,bleOutputBuf,bleTransferSize)==HAL_OK)
+	{
+		bleTransOngoingFlag=1;
+	}
+}
+
 /********************************************************************************
-**
-*Function Name:void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
-*Function :UART callback function  for UART interrupt for transmit data
-*Input Ref: structure UART_HandleTypeDef pointer
-*Return Ref:NO
-*
+	**
+	*Function Name:void trigParameterUpdateImmediate(void)
+	*Function :UART callback function  for UART interrupt for transmit data
+	*Input Ref: structure UART_HandleTypeDef pointer
+	*Return Ref:NO
+	*
+*******************************************************************************/
+void trigParameterUpdateImmediate(void)
+{
+	//checkParameterFlag=1;
+	//counter_15m=(uint32_t)0L;
+}
+
+/********************************************************************************
+	**
+	*Function Name:void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+	*Function :UART callback function  for UART interrupt for transmit data
+	*Input Ref: structure UART_HandleTypeDef pointer
+	*Return Ref:NO
+	*
 *******************************************************************************/
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	if(huart==&CMD_LINKER)
-	{
-		transOngoingFlag=0; //UART Transmit interrupt flag =0 ,RUN
-	
-	}
-	else if(huart==&BLE_USART)
+  if(huart==&BLE_USART)
 	{
 		bleTransOngoingFlag=0;	// reset busy flag
 	}

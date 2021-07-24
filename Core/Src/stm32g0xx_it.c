@@ -61,7 +61,7 @@ extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim16;
 extern TIM_HandleTypeDef htim17;
 extern UART_HandleTypeDef huart2;
-extern UART_HandleTypeDef huart1;
+
 
 /* USER CODE BEGIN EV */
 
