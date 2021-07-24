@@ -1,0 +1,515 @@
+/*
+ * uart.c
+ *
+ *  Created on: Sep 23, 2020
+ *      Author: om
+ */
+
+#include "usart.h"
+#include "motor.h"
+#include "cmd_link.h"
+
+#define CMD_LINKER	huart2
+#define BLE_USART	huart1
+
+
+#define BOARD_ADDR	77	// 'M'
+
+#define STATE_PREAMBLE1	0	// 'M'	fixed
+#define STATE_PREAMBLE2	1	// 'X'	fixed
+#define STATE_ADDR		2	// 'M' this board
+#define STATE_CMD		3	// motor control command
+#define STATE_SIZE		4	// length of command parameter
+#define STATE_PARA		5	// parameter
+#define STATE_CRC		6	// checksum
+
+#define BUFFER_SIZE	32
+
+#define MAX_CMD_PARA_SIZE	8
+
+
+
+static uint8_t currUnion,currLight,currFilter,currLight_LR,currLight_AU,tmpLight,tmpLight_LR,tmpLight_AU; //WT.EDIT 
+
+
+static uint8_t decodeFlag,bleDecodeFlag;
+
+
+#define USART_RX_TIMEOUT	5000	// 2s
+#define USART_TX_TIMEOUT	5000	// 1s
+
+
+extern void posCtrl(uint8_t destPos);
+extern void stopFinding(void);
+extern void stopFinding_FastMotor(void);
+static void initBtleModule(void); //bluletooth 
+
+
+
+static uint8_t inputCmd[32],bleInputCmd[32];
+static uint8_t crcCheck,bleCrcCheck;
+
+
+
+volatile static uint8_t transOngoingFlag; //interrupt Transmit flag bit , 1---stop,0--run
+static uint8_t powerOnFlag;
+static uint8_t nowLightState;
+static uint8_t outputBuf[MAX_BUFFER_SIZE],bleOutputBuf[MAX_BUFFER_SIZE];
+static uint8_t inputBuf[MAX_BUFFER_SIZE],bleBuf[MAX_BUFFER_SIZE];
+static uint8_t transferSize,bleTransferSize;
+
+static uint8_t bleTarget;
+static uint8_t bleIndex;
+
+static uint8_t swStr[3]={"+++"};
+static uint8_t resetCmd[]={"AT+RESET"};
+static uint8_t getAdvDataCmd[]={"AT+ADVDATA"};
+static uint8_t advData[]={"AT+ADVDATA=03FF03FF"};
+static uint8_t cmdSize,bleCmdSize;
+static uint8_t state,bleState;
+
+
+volatile static uint8_t transOngoingFlag; //interrupt Transmit flag bit , 1---stop,0--run
+volatile static uint8_t bleTransOngoingFlag;
+
+
+static uint8_t buf[BUFFER_SIZE];
+
+static uint8_t paraIndex,bleParaIndex;
+
+static uint8_t cmdSize;
+static uint8_t paraIndex;
+static uint8_t crcCheck;
+static uint8_t state;
+static uint8_t decodeFlag;
+static uint8_t needReportFlag;
+static uint8_t needReportFlag_debug;
+
+static uint8_t returnCode;
+static uint8_t transferSize;
+static uint8_t outputBuf[BUFFER_SIZE];
+
+
+volatile static uint8_t transOngoingFlag;
+
+
+static uint8_t checkBleModuleAVDData(void);
+
+static void runCmd(void);
+static void reportState(uint8_t stateCode);
+//static void reportState_debug(uint8_t stateCode);
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart);
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart);
+static void bleRunCmd(void);
+/****************************************************************************************************
+**
+*Function Name:static void initBtleModule(void)
+*Function: 
+*Input Ref: 
+*Return Ref:NO
+*
+****************************************************************************************************/
+static void initBtleModule(void)
+{
+	uint8_t tryTimes=3;
+
+	while(tryTimes)
+	{
+		HAL_UART_Abort(&BLE_USART);
+		HAL_Delay(50);
+		HAL_UART_Transmit(&BLE_USART,swStr,3,USART_TX_TIMEOUT);
+		HAL_Delay(500);
+		if(checkBleModuleAVDData())	tryTimes=0;
+		else tryTimes--;
+	}
+	HAL_UART_Abort(&BLE_USART);
+}
+static uint8_t checkBleModuleAVDData(void)
+{
+	HAL_StatusTypeDef ret;
+
+	HAL_UART_Abort(&BLE_USART);
+	HAL_UART_Transmit(&BLE_USART,getAdvDataCmd,10,USART_TX_TIMEOUT);
+	ret=HAL_UART_Receive(&BLE_USART,inputBuf,24,USART_RX_TIMEOUT);
+	if(ret==HAL_OK)
+	{
+		if(inputBuf[20]=='F' && inputBuf[21]=='F')
+		{
+			// switch to normal mode
+			HAL_UART_Transmit(&BLE_USART,swStr,3,USART_TX_TIMEOUT);
+		}
+		else
+		{
+			HAL_UART_Transmit(&BLE_USART,advData,19,USART_TX_TIMEOUT);
+			HAL_Delay(50);
+			HAL_UART_Transmit(&BLE_USART,resetCmd,8,USART_TX_TIMEOUT);
+			HAL_Delay(2000);
+		}
+		return 1;
+	}
+	return 0;
+}
+
+
+void cmdInit(void)
+{
+	state=STATE_PREAMBLE1;
+	decodeFlag=0;
+	needReportFlag=0;
+	needReportFlag_debug=0;
+	transOngoingFlag=0;
+	bleDecodeFlag=0; //bluetooth flag
+	HAL_UART_Abort(&CMD_LINKER);
+	HAL_UART_Abort(&BLE_USART);
+	//HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
+	//bluetooth
+	initBtleModule();
+	HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
+	HAL_UART_Receive_IT(&BLE_USART,bleBuf,1);
+}
+
+void decode(void)
+{
+	if(decodeFlag)
+	{
+		decodeFlag=0;
+		runCmd();
+	}
+	if(bleDecodeFlag) //bluetooth to UART
+	{
+		bleDecodeFlag=0;
+		bleRunCmd();
+	}
+}
+
+void trigReportFlag(uint8_t stateCode)
+{
+	needReportFlag=1;
+	returnCode=stateCode;
+}
+
+void trigReportFlag_Debug(uint8_t stateCode)
+{
+	needReportFlag_debug=1;
+	returnCode=stateCode;
+}
+
+
+static void runCmd(void)
+{
+	uint8_t cmdType=inputCmd[0];
+	uint8_t paraSize=inputCmd[1];
+	//uint8_t para;
+	static uint8_t k;
+	//uint8_t dir,speed;
+
+	switch(cmdType)
+	{
+	case 'R':	// motor run command
+		//speed=inputCmd[1];
+		//dir=inputCmd[2];
+		//startMotor(1,0);
+		if(paraSize==1)
+		{
+			gInputSignal=inputCmd[2]-0x30;
+			getCmdTime =1;
+
+		}
+		else if(paraSize==2)
+		{
+			gInputSignal=(inputCmd[2]-0x30)*10+(inputCmd[3]-0x30);
+			getCmdTime =1;
+
+		}
+		else
+		{
+			return;	// error
+		}
+		if(gInputSignal>MAX_FILTER_NUM)	return;	// error
+
+		 posCtrl(gInputSignal);
+		   
+		 break;
+	case 'S':	// motor stop command
+		stopFinding();
+		break;
+	default:
+		break;
+	}
+}
+
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart==&CMD_LINKER)
+	{
+		switch(state)
+		{
+		case STATE_PREAMBLE1:
+			if(buf[0]=='M')
+				state=STATE_PREAMBLE2;
+			break;
+		case STATE_PREAMBLE2:
+			if(buf[0]=='X')
+			{
+				state=STATE_ADDR;
+			}
+			else
+				state=STATE_PREAMBLE1;
+			break;
+		case STATE_ADDR:
+			if(buf[0]==BOARD_ADDR)
+			{
+				state=STATE_CMD;
+			}
+			else
+				state=STATE_PREAMBLE1;
+			break;
+		case STATE_CMD:
+			inputCmd[0]=buf[0];
+			crcCheck = 0x55 ^ inputCmd[0];
+			//decodeFlag=1;
+			state=STATE_SIZE;
+			break;
+		case STATE_SIZE:
+			cmdSize=buf[0]-0x30;
+			if(cmdSize>MAX_CMD_PARA_SIZE)	// out of range
+			{
+				state=STATE_PREAMBLE1;
+			}
+			else if(cmdSize>0)
+			{
+				inputCmd[1]=cmdSize;
+				paraIndex=2;
+				crcCheck ^= buf[0];
+				state=STATE_PARA;
+			}
+			else	// no parameter
+			{
+				inputCmd[1]=0;
+				crcCheck ^= buf[0];
+				decodeFlag=1;
+				state=STATE_PREAMBLE1;
+			}
+			break;
+		case STATE_PARA:
+			crcCheck ^= buf[0];
+			inputCmd[paraIndex]=buf[0];
+			paraIndex++;
+			cmdSize--;
+			if(cmdSize==0)
+			{
+				decodeFlag=1;
+				state=STATE_PREAMBLE1;
+			}
+			break;
+		case STATE_CRC:
+			//if((crcCheck ^ buf[0])==0)
+			{
+				//decodeFlag=1;
+			}
+			state=STATE_PREAMBLE1;
+			break;
+		default:
+			state=STATE_PREAMBLE1;
+			decodeFlag=0;
+		}
+		HAL_UART_Receive_IT(&CMD_LINKER,buf,1);
+	}
+	else if(huart==&BLE_USART) //蓝牙接收
+	{
+		switch(bleState)
+		{
+		case STATE_PREAMBLE1:
+			if(bleBuf[0]=='M')
+				bleState=STATE_PREAMBLE2;
+			break;
+		case STATE_PREAMBLE2:
+			if(bleBuf[0]=='X')
+			{
+				bleState=STATE_ADDR;
+			}
+			else
+				bleState=STATE_PREAMBLE1;
+			break;
+		case STATE_ADDR:
+			if(bleBuf[0]==BOARD_ADDR_BT)
+			{
+				bleState=STATE_CMD;
+			}
+			else
+				bleState=STATE_PREAMBLE1;
+			break;
+		case STATE_CMD:
+			bleInputCmd[0]=bleBuf[0];
+			bleCrcCheck = 0xAA ^ bleInputCmd[0];
+			//decodeFlag=1;
+			bleState=STATE_SIZE;
+			break;
+		case STATE_SIZE:
+			bleCmdSize=bleBuf[0];
+			if(bleCmdSize>MAX_CMD_PARA_SIZE)	// out of range
+			{
+				bleState=STATE_PREAMBLE1;
+			}
+			else if(bleCmdSize>0)
+			{
+				bleParaIndex=1;
+				bleCrcCheck ^= bleCmdSize;
+				bleState=STATE_PARA;
+			}
+			else	// no parameter
+			{
+				bleState=STATE_CRC;
+			}
+			break;
+		case STATE_PARA:
+			bleInputCmd[bleParaIndex]=bleBuf[0];
+			bleCrcCheck ^= bleInputCmd[bleParaIndex];
+			bleParaIndex++;
+			bleCmdSize--;
+			if(bleCmdSize==0) bleState=STATE_CRC;
+			break;
+		case STATE_CRC:
+			if((bleCrcCheck ^ bleBuf[0])==0)
+			{
+				bleDecodeFlag=1;
+			}
+			bleState=STATE_PREAMBLE1;
+			break;
+		default:
+			bleState=STATE_PREAMBLE1;
+			bleDecodeFlag=0;
+		}
+		HAL_UART_Receive_IT(&BLE_USART,bleBuf,1);
+	}
+}
+
+
+
+static void reportState(uint8_t stateCode)
+{
+	//uint8_t i,crc;
+
+	//crc=0x55;
+	outputBuf[0]='M'; //4D
+	outputBuf[1]='X'; //58
+	outputBuf[2]='C'; //43	// 'C' for control board
+	outputBuf[3]='R'; //52	// 'R'  motor board return state to control board
+	outputBuf[4]='1'; //31	// one command parameter
+	outputBuf[5]=stateCode;	// change to ascii number
+	//for(i=3;i<6;i++) crc ^= outputBuf[i];
+	//outputBuf[i]=crc;
+	transferSize=6;
+	if(transferSize)
+	{
+		while(transOngoingFlag);
+		transOngoingFlag=1;
+		HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
+	}
+}
+void reportState_debug(uint8_t stateCode)
+{
+	//uint8_t i,crc;
+
+	//crc=0x55;
+	outputBuf[0]=0x0A;
+	
+	outputBuf[1]=stateCode;	// change to ascii number
+	//for(i=3;i<6;i++) crc ^= outputBuf[i];
+	//outputBuf[i]=crc;
+	transferSize=2;
+	if(transferSize)
+	{
+		while(transOngoingFlag);
+		transOngoingFlag=1;
+		HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
+	}
+}
+/****************************************************************************************************
+**
+*Function Name:static void bleRunCmd(void)
+*Function: 
+*Input Ref: 
+*Return Ref:
+*
+****************************************************************************************************/
+static void bleRunCmd(void)
+{
+//	uint8_t transfeSize=0;
+//	uint8_t ledGroup,ledIndex;
+	uint8_t cmdType=bleInputCmd[0];
+
+	//static uint8_t keyBR_Counts=0;
+	switch(cmdType)
+	{
+	case 'L':	// 0x4C,led control command
+		bleTarget=bleInputCmd[1];
+		bleIndex=bleInputCmd[2];
+		switch(bleTarget)
+		{
+		case 0:
+			if(bleIndex<MAX_LIGHT_NUMBER)
+			{
+				//setEchoLight(bleIndex);
+			}
+			else if(bleIndex==MAX_LIGHT_NUMBER)
+			{
+				if(nowLightState==NOW_LIGHT_IS_ON)
+				{
+					//turnoffAllLight();
+				}
+				else
+				{
+					//setCurrentLightOn();
+				}
+				//notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currLight_LR,currFilter,currUnion);
+				return;
+			}
+			break;
+		case 1:
+			//if(bleIndex<MAX_FILTER_NUMBER)	setEchoFilter(bleIndex);
+			//else if(bleIndex==MAX_FILTER_NUMBER) brightnessAdj(BRIGHTNESS_ADJ_UP);
+			//else brightnessAdj(BRIGHTNESS_ADJ_DOWN);
+			break;
+		case 2:
+		case 3:
+			if(bleTarget==3) bleIndex+=8;
+			if(bleIndex<MAX_UNION_NUMBER)
+			{
+				//setEchoUnion(bleIndex);
+			}
+			break;
+		default:
+			break;
+		}
+		//trigParameterUpdateImmediate();
+		break;
+	case 'G':	// 0x47,only get leds status
+		//notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currLight_LR,currFilter,currUnion);
+		break;
+	default:
+		break;
+	}
+}
+/********************************************************************************
+**
+*Function Name:void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+*Function :UART callback function  for UART interrupt for transmit data
+*Input Ref: structure UART_HandleTypeDef pointer
+*Return Ref:NO
+*
+*******************************************************************************/
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if(huart==&CMD_LINKER)
+	{
+		transOngoingFlag=0; //UART Transmit interrupt flag =0 ,RUN
+	
+	}
+	else if(huart==&BLE_USART)
+	{
+		bleTransOngoingFlag=0;	// reset busy flag
+	}
+}
+
