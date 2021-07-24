@@ -22,25 +22,12 @@ static void setLevel_PWMA(uint8_t level);
 	*Output Ref:No
 	*
 ******************************************************************************/
-void LedOnOff(uint8_t ledNum,uint8_t onOff)
+void LedOnOff(uint8_t ledNum)
 {
-  // uint8_t temp;
-   if((lastOnLed !=ledNum)||(onOff ==0)){
 
-                //turn off all led 
-              mainTurnOff_TheFirstLedA();
-			  mainled.led_by_a = 0;
-			  mainled.led_by_b = 0;
-
-   }
-    
-   if(onOff){
-
-	   lastOnLed = ledNum;
-	   hasLedOn =1;
-	  
-	  
-	   switch(ledNum){
+	mainled.pwmDutyCycle_ch22=90;
+  
+	 switch(ledNum){
 	   	
 			   case 0://PB0-[1]-----oled menu "UV365" {1}
 				mainled.led_by_a = 1;
@@ -121,8 +108,9 @@ void LedOnOff(uint8_t ledNum,uint8_t onOff)
            
 	   }
 	  
-   }
-}
+  }
+
+
 /*************************************************************************
  	*
 	*Function Name:void TurnOff_TheFirstLedA(void)
@@ -136,7 +124,9 @@ void mainTurnOff_TheFirstLedA(void)
      //turn off LEDA LED
 	   HAL_TIM_PWM_Stop(&htim3,TIM_CHANNEL_4) ; //HAL_GPIO_WritePin(LEDAPWM_GPIO_Port, LEDAPWM_Pin, GPIO_PIN_RESET);//TIM2_CH2
 	   HAL_Delay(20);
-	   HAL_GPIO_WritePin(LEDA1_GPIO_Port, LEDA1_Pin | LEDA2_Pin | LEDA3_Pin | LEDA4_Pin | LEDA5_Pin | LEDA6_Pin, GPIO_PIN_RESET);
+	   HAL_GPIO_WritePin(GPIOA,  LEDA2_Pin | LEDA3_Pin | LEDA4_Pin | LEDA5_Pin , GPIO_PIN_RESET);
+	   HAL_GPIO_WritePin(GPIOB, LEDA1_Pin , GPIO_PIN_RESET);
+	   HAL_GPIO_WritePin(GPIOC, LEDA6_Pin , GPIO_PIN_RESET);
 	   mainled.pwmDutyCycle_ch22=LEVEL_DEFAULT; //WT.EDIT 2021.07.10
 	   MX_TIM3_Init();//WT.EDIT 2021.07.10
 
