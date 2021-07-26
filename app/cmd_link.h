@@ -34,8 +34,8 @@
 #define MOTOR_SPEED_NORMAL	0
 #define MOTOR_SPEED_HIGH	1
 
-#define BRIGHTNESS_ADJ_UP	1
-#define BRIGHTNESS_ADJ_DOWN	0
+
+
 
 #define NOW_LIGHT_IS_OFF	0
 #define NOW_LIGHT_IS_ON		1
@@ -44,8 +44,9 @@
 #define MOTION_CCW	0
 
 #define MAX_FILTER_NUMBER	10
-#define MAX_LIGHT_NUMBER	16 //WT.EDIT 2021.04.22//10
+#define MAX_LIGHT_NUMBER	7//WT.EDIT 2021.07.24//10
 #define MAX_UNION_NUMBER	21//20
+uint8_t nowLightState;
 
 
 void cmdInit(void);

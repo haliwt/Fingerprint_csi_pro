@@ -28,7 +28,7 @@ TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim16;
 TIM_HandleTypeDef htim17;
 
-/* TIM2 init function 0.065ms*/
+/* TIM2 init function 0.065ms,Motor PWM output PB3*/
 void MX_TIM2_Init(void)
 {
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};

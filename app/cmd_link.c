@@ -54,10 +54,10 @@ static uint8_t bleCrcCheck;
 
 volatile static uint8_t transOngoingFlag; //interrupt Transmit flag bit , 1---stop,0--run
 
-static uint8_t nowLightState;
-static uint8_t outputBuf[MAX_BUFFER_SIZE],bleOutputBuf[MAX_BUFFER_SIZE];
+
+static uint8_t bleOutputBuf[MAX_BUFFER_SIZE];
 static uint8_t inputBuf[MAX_BUFFER_SIZE],bleBuf[MAX_BUFFER_SIZE];
-static uint8_t transferSize,bleTransferSize;
+static uint8_t bleTransferSize;
 
 static uint8_t bleTarget;
 static uint8_t bleIndex;
@@ -80,8 +80,8 @@ static uint8_t needReportFlag;
 static uint8_t needReportFlag_debug;
 
 static uint8_t returnCode;
-static uint8_t transferSize;
-static uint8_t outputBuf[BUFFER_SIZE];
+
+//static uint8_t outputBuf[BUFFER_SIZE];
 
 
 volatile static uint8_t transOngoingFlag;
@@ -92,7 +92,7 @@ static uint8_t checkBleModuleAVDData(void);
 //static void runCmd(void);
 
 //static void reportState_debug(uint8_t stateCode);
-static void trigParameterUpdateImmediate(void);
+
 static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum);
 
 
@@ -206,55 +206,7 @@ void trigReportFlag_Debug(uint8_t stateCode)
 	returnCode=stateCode;
 }
 
-/**************************************************************
-	**
-	*Function Name:static void bleRunCmd(void)
-	*Function: 
-	*Input Ref: 
-	*Return Ref:
-	*
-***************************************************************/
-#if 0
-static void runCmd(void)
-{
-	uint8_t cmdType=inputCmd[0];
-	uint8_t paraSize=inputCmd[1];
 
-	switch(cmdType)
-	{
-	case 'R':	// motor run command
-		//speed=inputCmd[1];
-		//dir=inputCmd[2];
-		//startMotor(1,0);
-		if(paraSize==1)
-		{
-			gInputSignal=inputCmd[2]-0x30;
-			getCmdTime =1;
-
-		}
-		else if(paraSize==2)
-		{
-			gInputSignal=(inputCmd[2]-0x30)*10+(inputCmd[3]-0x30);
-			getCmdTime =1;
-
-		}
-		else
-		{
-			return;	// error
-		}
-		if(gInputSignal>MAX_FILTER_NUM)	return;	// error
-
-		 posCtrl(gInputSignal);
-		   
-		 break;
-	case 'S':	// motor stop command
-		stopFinding();
-		break;
-	default:
-		break;
-	}
-}
-#endif
 /**************************************************************
 	**
 	*Function Name:static void bleRunCmd(void)
@@ -336,24 +288,6 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 
 
 
-void reportState_debug(uint8_t stateCode)
-{
-	//uint8_t i,crc;
-
-	//crc=0x55;
-	outputBuf[0]=0x0A;
-	
-	outputBuf[1]=stateCode;	// change to ascii number
-	//for(i=3;i<6;i++) crc ^= outputBuf[i];
-	//outputBuf[i]=crc;
-	transferSize=2;
-	if(transferSize)
-	{
-		while(transOngoingFlag);
-		transOngoingFlag=1;
-		//HAL_UART_Transmit_IT(&CMD_LINKER,outputBuf,transferSize);
-	}
-}
 /**************************************************************
 	**
 	*Function Name:static void bleRunCmd(void)
@@ -379,45 +313,30 @@ static void bleRunCmd(void)
 		case 0:
 			if(bleIndex<MAX_LIGHT_NUMBER)
 			{
-				LedOnOff(bleIndex);
-			}
-			else if(bleIndex==MAX_LIGHT_NUMBER)
-			{
+				
 				if(nowLightState==NOW_LIGHT_IS_ON)
 				{
-					 mainTurnOff_TheFirstLedA();
+					mainTurnOff_TheFirstLedA();
 				}
 				else
 				{
-					//setCurrentLightOn();
+					LedOn(bleIndex+1);
 				}
 				if(stateIndex !=currState || lightIndex!=currLight )//currUnion = 0xff,
 				{
-                        stateIndex = currState;
-						lightIndex = currLight;
-						notifyStatusToHost(lightIndex,stateIndex); //Smart Menu update parameter .
-						//for Blue UART Transmit 
+	                        stateIndex = currState;
+							lightIndex = currLight;
+							notifyStatusToHost(lightIndex,stateIndex); //Smart Menu update parameter .
+							//for Blue UART Transmit 
 				}
-				return;
+			   return;
 			}
 			break;
-		case 1:
-			//if(bleIndex<MAX_FILTER_NUMBER)	setEchoFilter(bleIndex);
-			//else if(bleIndex==MAX_FILTER_NUMBER) brightnessAdj(BRIGHTNESS_ADJ_UP);
-			//else brightnessAdj(BRIGHTNESS_ADJ_DOWN);
-			break;
-		case 2:
-		case 3:
-			if(bleTarget==3) bleIndex+=8;
-			if(bleIndex<MAX_UNION_NUMBER)
-			{
-				//setEchoUnion(bleIndex);
-			}
-			break;
+		
 		default:
 			break;
 		}
-		trigParameterUpdateImmediate();
+	
 		break;
 	case 'G':	// 0x47,only get leds status
 		if(stateIndex !=currState || lightIndex!=currLight )//currUnion = 0xff,
@@ -441,7 +360,7 @@ static void bleRunCmd(void)
 	*Return Ref:NO
 	*
 *********************************************************************************************************/
-static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum)
+static void notifyStatusToHost(uint8_t lightNum,uint8_t lightState)
 {
 	uint8_t i,crc=0xAA;
 
@@ -450,7 +369,7 @@ static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum)
 	bleOutputBuf[0]=BOARD_ADDR_BT;  //HEX:42 
 	bleOutputBuf[1]='L'; 	// leds status 'L' -HEX:4C
 	bleOutputBuf[2]=lightNum; //the first group LED number on or off 
-	bleOutputBuf[3]=filterNum; //filter of number 
+	bleOutputBuf[3]=lightState; //filter of number 
 	
     //bleOutputBuf[4]=0xff;
 	//bleOutputBuf[5]=0;
@@ -465,19 +384,6 @@ static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum)
 	}
 }
 
-/********************************************************************************
-	**
-	*Function Name:void trigParameterUpdateImmediate(void)
-	*Function :UART callback function  for UART interrupt for transmit data
-	*Input Ref: structure UART_HandleTypeDef pointer
-	*Return Ref:NO
-	*
-*******************************************************************************/
-void trigParameterUpdateImmediate(void)
-{
-	//checkParameterFlag=1;
-	//counter_15m=(uint32_t)0L;
-}
 
 /********************************************************************************
 	**

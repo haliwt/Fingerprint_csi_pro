@@ -20,7 +20,7 @@ void mainTheFirstGroup_SingleLEDA(void);
 void mainTheSecondGroup_SingleLEDB(void);
 void mainFanControl(uint8_t fanval);
 
-void LedOnOff(uint8_t ledNum);
+void LedOn(uint8_t ledNum);
 
 void changeBrightness(uint8_t dir);
 

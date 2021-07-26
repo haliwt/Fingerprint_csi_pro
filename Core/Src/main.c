@@ -63,19 +63,23 @@ int main(void)
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
+ // MX_GPIO_Init();
+  
+  mainMX_GPIO_Init();
   MX_USART2_UART_Init();
 
   MX_TIM16_Init();
   MX_TIM2_Init(); //motor pwm
   MX_ADC1_Init();
   MX_TIM17_Init();
+
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+  HAL_GPIO_WritePin(POWER_STATE_GPIO_Port,POWER_STATE_Pin, GPIO_PIN_SET);
   user_main();
   while (1)
   {

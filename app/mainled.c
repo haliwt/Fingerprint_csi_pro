@@ -2,9 +2,10 @@
 #include "usart.h"
 #include "pwm.h"
 #include "gpio.h"
+#include "cmd_link.h"
 
 mainled_t mainled;
-static uint8_t lastOnLed = 0xff;
+
 static uint8_t hasLedOn;
 //static uint8_t level_a;
 //static uint8_t level_b;
@@ -22,27 +23,31 @@ static void setLevel_PWMA(uint8_t level);
 	*Output Ref:No
 	*
 ******************************************************************************/
-void LedOnOff(uint8_t ledNum)
+void LedOn(uint8_t ledNum)
 {
 
 	mainled.pwmDutyCycle_ch22=90;
   
 	 switch(ledNum){
+
+	           case 0:
+                    nowLightState=NOW_LIGHT_IS_OFF;
+	           break;
 	   	
-			   case 0://PB0-[1]-----oled menu "UV365" {1}
+			   case 1://PB0-[1]-----oled menu "UV365" {1}
 				mainled.led_by_a = 1;
 				mainled.led_by_b = 0;
 				mainTurnOff_TheFirstLedA();
 				HAL_Delay(20);
                 //turn on LEDA4
                 HAL_GPIO_WritePin(LEDA1_GPIO_Port, LEDA1_Pin, GPIO_PIN_SET);
-			    //2 .EN
+			    nowLightState=NOW_LIGHT_IS_ON;
 				
 			    setLevel_PWMA(mainled.pwmDutyCycle_ch22);
 			    //  HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2) ;
                 break;
 
-            case 1: //PA4-[2]-----oled menu "Violet" {2}
+            case 2: //PA4-[2]-----oled menu "Violet" {2}
 				mainled.led_by_a = 1;
 				mainled.led_by_b = 0;
 				mainTurnOff_TheFirstLedA();
@@ -51,10 +56,10 @@ void LedOnOff(uint8_t ledNum)
                 HAL_GPIO_WritePin(LEDA2_GPIO_Port, LEDA2_Pin, GPIO_PIN_SET);      //1.the first turn on LED
 				 setLevel_PWMA(mainled.pwmDutyCycle_ch22);
 			    // HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2) ;  //2.the second turn on Enable
-			    
+			    nowLightState=NOW_LIGHT_IS_ON;
                 break;
 
-            case 2://PA5---[3]---"white" oled {0}  //
+            case 3://PA5---[3]---"white" oled {0}  //
 				mainled.led_by_a = 1;
 				mainled.led_by_b = 0;
 			
@@ -62,46 +67,55 @@ void LedOnOff(uint8_t ledNum)
 				HAL_Delay(20);
                 //turn on LEDA6
                 HAL_GPIO_WritePin(LEDA3_GPIO_Port, LEDA3_Pin, GPIO_PIN_SET);
+				nowLightState=NOW_LIGHT_IS_ON;
 				setLevel_PWMA(mainled.pwmDutyCycle_ch22);
 				//HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2) ; //2.the second turn on Enable
 			    
                 break;
 
-            case 3: //PA1-[4]----oled menu "Green"--{6}
+            case 4: //PA1-[4]----oled menu "Green"--{6}
 				mainled.led_by_a = 1;
 				mainled.led_by_b = 0;
 				mainTurnOff_TheFirstLedA();
 				HAL_Delay(20);
                 //turn on LEDA7
                 HAL_GPIO_WritePin(LEDA4_GPIO_Port, LEDA4_Pin, GPIO_PIN_SET);
+				nowLightState=NOW_LIGHT_IS_ON;
 				setLevel_PWMA(mainled.pwmDutyCycle_ch22);
 				//HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2) ;//2.the second turn on Enable
 			    
                 break;
 
-            case 4://PA0-[5]----oled "Cyan"--{5}
+            case 5://PA0-[5]----oled "Cyan"--{5}
 				mainled.led_by_a = 1;
 				mainled.led_by_b = 0;
 				mainTurnOff_TheFirstLedA();
 				HAL_Delay(20);
                 //turn on LEDA8
                 HAL_GPIO_WritePin(LEDA5_GPIO_Port, LEDA5_Pin, GPIO_PIN_SET);
+				nowLightState=NOW_LIGHT_IS_ON;
 				setLevel_PWMA(mainled.pwmDutyCycle_ch22);
 				//HAL_TIM_PWM_Start(&htim2,TIM_CHANNEL_2) ;  //2.TIM2_CH2
 			    
             break;
 			
 		   //LEDB -The second group 
-		    case 5://PC14 --[6]-----olde "640"-{9}
+		    case 6://PC14 --[6]-----olde "640"-{9}
 				mainled.led_by_b = 1;
 				mainled.led_by_a = 0;
 				mainTurnOff_TheFirstLedA();
 				HAL_Delay(20);
 				//1.turn on LEDB1 =1
                 HAL_GPIO_WritePin(LEDA6_GPIO_Port, LEDA6_Pin, GPIO_PIN_SET);
+				nowLightState=NOW_LIGHT_IS_ON;
                 setLevel_PWMA(mainled.pwmDutyCycle_ch22);
 
                 break;
+
+		   default :
+                nowLightState=NOW_LIGHT_IS_OFF;
+
+		   break;
 
            
 	   
@@ -128,6 +142,7 @@ void mainTurnOff_TheFirstLedA(void)
 	   HAL_GPIO_WritePin(GPIOB, LEDA1_Pin , GPIO_PIN_RESET);
 	   HAL_GPIO_WritePin(GPIOC, LEDA6_Pin , GPIO_PIN_RESET);
 	   mainled.pwmDutyCycle_ch22=LEVEL_DEFAULT; //WT.EDIT 2021.07.10
+	   nowLightState=NOW_LIGHT_IS_OFF;
 	   MX_TIM3_Init();//WT.EDIT 2021.07.10
 
 }
