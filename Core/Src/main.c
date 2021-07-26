@@ -79,7 +79,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  HAL_GPIO_WritePin(POWER_STATE_GPIO_Port,POWER_STATE_Pin, GPIO_PIN_SET);
+
   user_main();
   while (1)
   {
