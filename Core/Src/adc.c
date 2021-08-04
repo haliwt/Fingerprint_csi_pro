@@ -160,32 +160,33 @@ void HAL_ADC_MspDeInit(ADC_HandleTypeDef* adcHandle)
 }
 
 /* USER CODE BEGIN 1 */
-//»ñµÃADCÖµ
-//ch: Í¨µÀÖµ 0~16£¬È¡Öµ·¶Î§Îª£ºADC_CHANNEL_0~ADC_CHANNEL_16
-//·µ»ØÖµ:×ª»»½á¹û
+//ï¿½ï¿½ï¿½ADCÖµ
+//ch: Í¨ï¿½ï¿½Öµ 0~16ï¿½ï¿½È¡Öµï¿½ï¿½Î§Îªï¿½ï¿½ADC_CHANNEL_0~ADC_CHANNEL_16
+//ï¿½ï¿½ï¿½ï¿½Öµ:×ªï¿½ï¿½ï¿½ï¿½ï¿½
 static uint16_t Get_Adc(uint32_t ch,uint8_t rank)   
 {
     ADC_ChannelConfTypeDef ADC1_Handler={0};
    // ADC_ChannelConfTypeDef sConfig = {0};
-    ADC1_Handler.Channel=ch;                                   //Í¨µÀ
-    ADC1_Handler.Rank=rank;                                       //µÚ1¸öÐòÁÐ£¬ÐòÁÐ1
-    ADC1_Handler.SamplingTime= ADC_SAMPLETIME_79CYCLES_5;      //²ÉÑùÊ±¼ä               
-    HAL_ADC_ConfigChannel(&hadc1,&ADC1_Handler);        //Í¨µÀÅäÖÃ
+    ADC1_Handler.Channel=ch;                                   //Í¨ï¿½ï¿½
+    ADC1_Handler.Rank=rank;                                       //ï¿½ï¿½1ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½ï¿½ï¿½1
+    ADC1_Handler.SamplingTime= ADC_SAMPLETIME_79CYCLES_5;      //ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½               
+    HAL_ADC_ConfigChannel(&hadc1,&ADC1_Handler);        //Í¨ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	
 	
-    HAL_ADC_Start(&hadc1);                               //¿ªÆôADC
+    HAL_ADC_Start(&hadc1);                               //ï¿½ï¿½ï¿½ï¿½ADC
 	
-    HAL_ADC_PollForConversion(&hadc1,10);                //ÂÖÑ¯×ª»»
+    HAL_ADC_PollForConversion(&hadc1,10);                //ï¿½ï¿½Ñ¯×ªï¿½ï¿½
  
-	return (uint16_t)HAL_ADC_GetValue(&hadc1);	        	//·µ»Ø×î½üÒ»´ÎADC1¹æÔò×éµÄ×ª»»½á¹û
+	return (uint16_t)HAL_ADC_GetValue(&hadc1);	        	//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½ï¿½ADC1ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½
 }
-  //»ñÈ¡Ö¸¶¨Í¨µÀµÄ×ª»»Öµ£¬È¡times´Î,È»ºóÆ½¾ù 
-//times:»ñÈ¡´ÎÊý
-//·µ»ØÖµ:Í¨µÀchµÄtimes´Î×ª»»½á¹ûÆ½¾ùÖµ
+  //ï¿½ï¿½È¡Ö¸ï¿½ï¿½Í¨ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½Öµï¿½ï¿½È¡timesï¿½ï¿½,È»ï¿½ï¿½Æ½ï¿½ï¿½ 
+//times:ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½
+//ï¿½ï¿½ï¿½ï¿½Öµ:Í¨ï¿½ï¿½chï¿½ï¿½timesï¿½ï¿½×ªï¿½ï¿½ï¿½ï¿½ï¿½Æ½ï¿½ï¿½Öµ
 uint16_t Get_Adc_Average(uint32_t ch,uint8_t times,uint8_t rank)
 {
 	uint32_t temp_val=0;
 	uint8_t t;
+  HAL_ADC_Start(&hadc1); //WT.EDIT 
 	for(t=0;t<times;t++)
 	{
 		temp_val+=Get_Adc(ch,rank);
