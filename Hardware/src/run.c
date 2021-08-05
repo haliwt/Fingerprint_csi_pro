@@ -2,6 +2,7 @@
 #include "lamp.h"
 
 
+
 RUN run_t;
 /************************************************************************
 	**
@@ -62,11 +63,16 @@ void CheckRun(void)
 
       case 0x11:
            POWER_ON();
-		   LAMP_WHICH_ONE_ON(6);
+		  // LAMP_WHICH_ONE_ON(6);
+           if(run_t.bleDecodeFlag)
+            {
+                run_t.bleDecodeFlag=0;
+                bleRunCmd();
+            }
 		   
 
       break;
-      
+
       default :
 
       break;
