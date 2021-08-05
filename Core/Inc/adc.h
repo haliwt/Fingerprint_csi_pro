@@ -46,11 +46,12 @@ void MX_ADC1_Init(void);
 #define ADC_CHANNEL_NUMBER          2
 
 
-void SENSOR_ON(void);
+
 void SENSOR_OFF(void);
 
 
 uint16_t Get_Adc_Average(uint32_t ch,uint8_t times,uint8_t rank);
+void UART_TRANSMIT_TO_PC_DATA(void);
 
 /* USER CODE END Prototypes */
 

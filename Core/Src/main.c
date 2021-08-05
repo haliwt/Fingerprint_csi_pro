@@ -107,6 +107,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+      UART_TRANSMIT_TO_PC_DATA();
       MOTOR_Run();
   }
   /* USER CODE END 3 */
