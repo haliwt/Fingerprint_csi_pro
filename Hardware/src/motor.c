@@ -1,7 +1,7 @@
 #include "motor.h"
 #include "tim.h"
 
-
+uint8_t motorRunDir_flag;
 
 void MOTOR_MicroStep_FUN(uint8_t micro)
 {
@@ -26,24 +26,38 @@ void MOTOR_MicroStep_FUN(uint8_t micro)
 
 }
 /*************************************************************************
- * 
- * Function Name:void MOTOR_Run(void)
- * Function :motor run for DRV8846 IC
- * 
- * 
+     * 
+     * Function Name:void MOTOR_Run(void)
+     * Function :motor run for DRV8846 IC
+     * Input Ref:NO
+     * Retrun Ref:NO
+     * 
  ************************************************************************/
 void MOTOR_Run(void)
 {
    HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_2);
    MOTOR_MicroStep_FUN(0);
-   MOTOR_DIR_CCW();
+   if(motorRunDir_flag==CCW)
+        MOTOR_DIR_CCW();
+   else MOTOR_DIR_CW();
    MOTOR_DRV8846_SLEEP_OFF();
    MOTOR_DRV8846_ENABLE();
    
-   
+}
+/*************************************************************************
+     * 
+     * Function Name:void MOTOR_Stop(void)
+     * Function :motor STOP for DRV8846 IC
+     * Input Ref:NO
+     * Retrun Ref:NO
+     * 
+ ************************************************************************/
+void MOTOR_Stop(void)
+{
+   MOTOR_DRV8846_DISABLE();
+   HAL_TIM_PWM_Stop(&htim2, TIM_CHANNEL_2);
+   MOTOR_DRV8846_SLEEP_ON() ;
 
- 
-   }
-
+}
 
 

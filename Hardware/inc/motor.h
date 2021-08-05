@@ -26,19 +26,25 @@
 #define MOTOR_SLEEP_Pin        GPIO_PIN_12
 #define MOTOR_SLEEP_Port       GPIOA
 
+#define CCW          1
+#define CW           0
 
 
 
 #define  MOTOR_DRV8846_DISABLE()        (HAL_GPIO_WritePin(GPIOB,MOTOR_EN_Pin,GPIO_PIN_SET))
 #define  MOTOR_DRV8846_ENABLE()         (HAL_GPIO_WritePin(GPIOB,MOTOR_EN_Pin,GPIO_PIN_RESET))
+
 #define MOTOR_DRV8846_SLEEP_OFF()       (HAL_GPIO_WritePin(MOTOR_SLEEP_Port,MOTOR_SLEEP_Pin,GPIO_PIN_SET))
+#define MOTOR_DRV8846_SLEEP_ON()        (HAL_GPIO_WritePin(MOTOR_SLEEP_Port,MOTOR_SLEEP_Pin,GPIO_PIN_RESET))
 
 #define MOTOR_DIR_CCW()                 (HAL_GPIO_WritePin(MOTOR_DIR_Port,MOTOR_DIR_Pin,GPIO_PIN_SET))
 #define MOTOR_DIR_CW()                  (HAL_GPIO_WritePin(MOTOR_DIR_Port,MOTOR_DIR_Pin,GPIO_PIN_RESET))
 
+extern uint8_t motorRunDir_flag;
 void MOTOR_MicroStep_FUN(uint8_t micro);
 
 void MOTOR_Run(void);
+void MOTOR_Stop(void);
 
 
 

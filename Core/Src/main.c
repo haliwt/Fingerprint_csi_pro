@@ -97,7 +97,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  ADC_InitValue();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,8 +107,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-      UART_TRANSMIT_TO_PC_DATA();
-      MOTOR_Run();
+      //UART_TRANSMIT_TO_PC_DATA();
+      SENSOR_ORIGIN_DetectPos();
+      SENSOR_FilterNumbers_DetectPos();
+      FilterNumbers_Calculate();
+     // MOTOR_Run();
   }
   /* USER CODE END 3 */
 }

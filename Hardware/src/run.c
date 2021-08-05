@@ -30,6 +30,7 @@ void CheckMode(uint8_t keyvalue)
              run_t.runMode = 0x10;
         break;
 
+
         default:
 
         break;
@@ -65,6 +66,7 @@ void CheckRun(void)
 		   
 
       break;
+      
       default :
 
       break;

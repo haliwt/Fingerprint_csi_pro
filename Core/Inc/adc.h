@@ -43,15 +43,42 @@ void MX_ADC1_Init(void);
 #define SENSOR_SWITCH_Pin          GPIO_PIN_11
 #define SENSOR_SWITCH_Port         GPIOA
 
+#define SENSOR_ORIGIN_Pin           GPIO_PIN_6
+#define SENSOR_ORIGIN_Port          GPIOA
+
+#define SENSOR_NUMBER_Pin           GPIO_PIN_7
+#define SENSOR_NUMBER_Port          GPIOA
+
 #define ADC_CHANNEL_NUMBER          2
 
+typedef struct {
 
+    uint8_t adcOrigin_value0;
+    uint8_t adcOrigin_value1;
+    uint8_t filterNumbers_value0;
+    uint8_t filterNumbers_value1;
+    uint8_t filterNumbers;
+    uint8_t filterOriginPos;
+    uint8_t filterFilterNumberPos;
+    uint8_t sensorOrigin_flag;
+    uint8_t sensorFilterNumbers_flag;
+
+}ADCVALUE;
+
+extern ADCVALUE adc_t;
+
+extern uint8_t currSensorFlag;
+
+void ADC_InitValue(void);
 
 void SENSOR_OFF(void);
 
 
 uint16_t Get_Adc_Average(uint32_t ch,uint8_t times,uint8_t rank);
 void UART_TRANSMIT_TO_PC_DATA(void);
+void SENSOR_ORIGIN_DetectPos(void);
+void SENSOR_FilterNumbers_DetectPos(void);
+void FilterNumbers_Calculate(void);
 
 /* USER CODE END Prototypes */
 

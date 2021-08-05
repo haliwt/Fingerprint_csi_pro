@@ -20,10 +20,13 @@
 /* Includes ------------------------------------------------------------------*/
 #include "adc.h"
 #include "usart.h"
+#include "motor.h"
 
 /* USER CODE BEGIN 0 */
 static uint16_t Get_Adc(uint32_t ch,uint8_t rank) ;
 static void SENSOR_ON(void);
+ADCVALUE adc_t;
+uint8_t currSensorFlag;
 /* USER CODE END 0 */
 
 ADC_HandleTypeDef hadc1;
@@ -197,19 +200,18 @@ void UART_TRANSMIT_TO_PC_DATA(void)
    static uint8_t i=0;
     uint8_t data,data1,data2,data3;
     uint16_t adcx,data0;
-	float temp;
-   SENSOR_ON();
-   HAL_ADC_Start(&hadc1); //WT.EDIT 
+   	float temp;
+   
 	
 	   i++;
-	   //if(i%2 ==0){
+	   if(i%2 ==0){
 	         adcx=Get_Adc_Average(ADC_CHANNEL_7,5,ADC_REGULAR_RANK_1);//»ñÈ¡Í¨µÀ1µÄ×ª»»Öµ£¬20´ÎÈ¡Æ½¾ù
-	    //}
-	   // else{
+	    }
+	   else{
 		
-		   //  adcx=Get_Adc_Average(ADC_CHANNEL_6,5,ADC_REGULAR_RANK_1);//»ñÈ¡Í¨µÀ1µÄ×ª»»Öµ£¬20´ÎÈ¡Æ½¾ù
+		     adcx=Get_Adc_Average(ADC_CHANNEL_6,5,ADC_REGULAR_RANK_1);//»ñÈ¡Í¨µÀ1µÄ×ª»»Öµ£¬20´ÎÈ¡Æ½¾ù
 		
-	//	}
+		}
 		    //ÏÔÊ¾ADCC²ÉÑùºóµÄÔ­Ê¼Öµ
 	    data0 = adcx;
 	    data= adcx>>8;
@@ -222,6 +224,7 @@ void UART_TRANSMIT_TO_PC_DATA(void)
 	  
 		  adcx=temp; 	   //¸³ÖµÕûÊý²¿·Ö¸øadcx±äÁ¿£¬ÒòÎªadcxÎªu16ÕûÐÎ
 	    data2=(uint8_t)adcx;
+      adc_t.adcOrigin_value1=data2;
 		   //ÏÔÊ¾µçÑ¹ÖµµÄÕûÊý²¿·Ö£¬3.1111µÄ»°£¬ÕâÀï¾ÍÊÇÏÔÊ¾3
 	    // printf("vadc = %d",data);
 	    HAL_UART_Transmit(&huart2, &data2, 1, 1);
@@ -230,10 +233,125 @@ void UART_TRANSMIT_TO_PC_DATA(void)
 		 //ÏÔÊ¾Ð¡Êý²¿·Ö£¨Ç°Ãæ×ª»»ÎªÁËÕûÐÎÏÔÊ¾£©£¬ÕâÀïÏÔÊ¾µÄ¾ÍÊÇ111.
 	     
 	    data3 =(uint8_t)temp;
+      adc_t.adcOrigin_value0 = data3;
 		  //printf("point= %ld\n",data);
 	    HAL_UART_Transmit(&huart2, &data3, 1, 1);
 		  HAL_Delay(250);	
+}
+/**********************************************************
+   * 
+   * Function Name:void SENSOR_ORIGIN_DetectPos(void)
+   * Function :ADC
+   * 
+   * 
+   * 
+***********************************************************/
+void SENSOR_ORIGIN_DetectPos(void)
+{
+    
+    uint8_t data,data1,data2,data3;
+    uint16_t adcx,data0;
+	  float temp;
+  
+     adcx=Get_Adc_Average(ADC_CHANNEL_6,5,ADC_REGULAR_RANK_1);//»ñÈ¡Í¨µÀ1µÄ×ª»»Öµ£¬20´ÎÈ¡Æ½¾ù
+		
+		
+		    //ÏÔÊ¾ADCC²ÉÑùºóµÄÔ­Ê¼Öµ
+	    data0 = adcx;
+	    data= adcx>>8;
+	    //data = (uint8_t)adcx;
+	    data1 = data0 <<4;
+	    HAL_UART_Transmit(&huart2, &data, 1, 1);
+	    HAL_UART_Transmit(&huart2, &data1, 1, 1);
+		  temp=(float)adcx*(3.3/4096);         //»ñÈ¡¼ÆËãºóµÄ´øÐ¡ÊýµÄÊµ¼ÊµçÑ¹Öµ£¬±ÈÈç3.1111
+	    
+	  
+		  adcx=temp; 	   //¸³ÖµÕûÊý²¿·Ö¸øadcx±äÁ¿£¬ÒòÎªadcxÎªu16ÕûÐÎ
+	    data2=(uint8_t)adcx;
+      adc_t.adcOrigin_value1=data2;
+		   //ÏÔÊ¾µçÑ¹ÖµµÄÕûÊý²¿·Ö£¬3.1111µÄ»°£¬ÕâÀï¾ÍÊÇÏÔÊ¾3
+	    // printf("vadc = %d",data);
+	    HAL_UART_Transmit(&huart2, &data2, 1, 1);
+		temp-=adcx;                           //°ÑÒÑ¾­ÏÔÊ¾µÄÕûÊý²¿·ÖÈ¥µô£¬ÁôÏÂÐ¡Êý²¿·Ö£¬±ÈÈç3.1111-3=0.1111
+		temp*=100;  	   //Ð¡Êý²¿·Ö³ËÒÔ1000£¬ÀýÈç£º0.1111¾Í×ª»»Îª111.1£¬Ïàµ±ÓÚ±£ÁôÈýÎ»Ð¡Êý¡£
+		 //ÏÔÊ¾Ð¡Êý²¿·Ö£¨Ç°Ãæ×ª»»ÎªÁËÕûÐÎÏÔÊ¾£©£¬ÕâÀïÏÔÊ¾µÄ¾ÍÊÇ111.
+	     
+	    data3 =(uint8_t)temp;
+      adc_t.adcOrigin_value0 = data3;
+		  //printf("point= %ld\n",data);
+	    HAL_UART_Transmit(&huart2, &data3, 1, 1);
+		  HAL_Delay(250);	
+}
+/**********************************************************
+   * 
+   * Function Name:void SENSOR_FilterNumbers_DetectPos(void)
+   * Function :ADC
+   * Input Ref:NO
+   * Return Ref:NO
+   * 
+***********************************************************/
+void SENSOR_FilterNumbers_DetectPos(void)
+{
+   static uint8_t i=0;
+    uint8_t data,data1,data2,data3;
+    uint16_t adcx,data0;
+	float temp;
+   
+	
+	 
+	  adcx=Get_Adc_Average(ADC_CHANNEL_7,5,ADC_REGULAR_RANK_1);//»ñÈ¡Í¨µÀ1µÄ×ª»»Öµ£¬20´ÎÈ¡Æ½¾ù
 	   
+		//ÏÔÊ¾ADCC²ÉÑùºóµÄÔ­Ê¼Öµ
+	    data0 = adcx;
+	    data= adcx>>8;
+	    //data = (uint8_t)adcx;
+	    data1 = data0 <<4;
+	    HAL_UART_Transmit(&huart2, &data, 1, 1);
+	    HAL_UART_Transmit(&huart2, &data1, 1, 1);
+		  temp=(float)adcx*(3.3/4096);         //»ñÈ¡¼ÆËãºóµÄ´øÐ¡ÊýµÄÊµ¼ÊµçÑ¹Öµ£¬±ÈÈç3.1111
+	    
+	  
+		  adcx=temp; 	   //¸³ÖµÕûÊý²¿·Ö¸øadcx±äÁ¿£¬ÒòÎªadcxÎªu16ÕûÐÎ
+	    data2=(uint8_t)adcx;
+      adc_t.filterNumbers_value1=data2;
+		   //ÏÔÊ¾µçÑ¹ÖµµÄÕûÊý²¿·Ö£¬3.1111µÄ»°£¬ÕâÀï¾ÍÊÇÏÔÊ¾3
+	    // printf("vadc = %d",data);
+	    HAL_UART_Transmit(&huart2, &data2, 1, 1);
+		temp-=adcx;                           //°ÑÒÑ¾­ÏÔÊ¾µÄÕûÊý²¿·ÖÈ¥µô£¬ÁôÏÂÐ¡Êý²¿·Ö£¬±ÈÈç3.1111-3=0.1111
+		temp*=100;  	   //Ð¡Êý²¿·Ö³ËÒÔ1000£¬ÀýÈç£º0.1111¾Í×ª»»Îª111.1£¬Ïàµ±ÓÚ±£ÁôÈýÎ»Ð¡Êý¡£
+		 //ÏÔÊ¾Ð¡Êý²¿·Ö£¨Ç°Ãæ×ª»»ÎªÁËÕûÐÎÏÔÊ¾£©£¬ÕâÀïÏÔÊ¾µÄ¾ÍÊÇ111.
+	     
+	    data3 =(uint8_t)temp;
+      adc_t.filterNumbers_value0 = data3;
+		  if(adc_t.sensorOrigin_flag==1){
+          HAL_Delay(100);
+         
+          if(adc_t.filterNumbers_value0 < 0x14)
+          {
+            if(motorRunDir_flag==CCW){
+                if(adc_t.sensorFilterNumbers_flag==8)
+                   adc_t.sensorFilterNumbers_flag =1;
+                else
+                  adc_t.sensorFilterNumbers_flag ++;
+            }
+            else{
+                
+                if(adc_t.sensorFilterNumbers_flag==0){
+                    adc_t.sensorFilterNumbers_flag =1; 
+                    i=0;
+                }
+                else{
+                    adc_t.sensorFilterNumbers_flag = 7 - i;
+                    i++;
+                }
+                   
+            }
+          }
+      }
+	    HAL_UART_Transmit(&huart2, &data3, 1, 1);
+		  HAL_Delay(250);	
+	   
+
 
 
 }
@@ -248,6 +366,126 @@ void UART_TRANSMIT_TO_PC_DATA(void)
 static void SENSOR_ON(void)
 {
     HAL_GPIO_WritePin(SENSOR_SWITCH_Port,SENSOR_SWITCH_Pin,GPIO_PIN_SET);
+
+}
+void SENSOR_OFF(void)
+{
+
+  HAL_GPIO_WritePin(SENSOR_SWITCH_Port,SENSOR_SWITCH_Pin,GPIO_PIN_RESET);
+}
+/**********************************************************
+   * 
+   * Function Name:void Filter_Cilter_Calculate(void)
+   * Function :ADC
+   * 
+   * 
+   * 
+***********************************************************/
+void FilterNumbers_Calculate(void)
+{
+   switch(adc_t.filterNumbers){
+
+     
+     case 0:
+            adc_t.sensorFilterNumbers_flag =0;
+
+     break;
+     
+      case 1: //power on the first
+             MOTOR_Run();
+            if(adc_t.filterNumbers==1){
+               if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+                  if(adc_t.adcOrigin_value0 < 0x14 && adc_t.filterNumbers_value0 < 0x14){
+                      MOTOR_Stop() ;
+                      HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                      adc_t.sensorOrigin_flag =1;
+                      adc_t.sensorFilterNumbers_flag =1;
+                  }
+
+            }
+          }
+
+     break;
+
+     case 2: //filter-number 2
+            if(adc_t.sensorFilterNumbers_flag==2){
+              if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+                MOTOR_Stop() ;
+                HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                
+              }
+            }  
+     break;
+
+     case 3: //filter-number 3
+           if(adc_t.sensorFilterNumbers_flag==3){
+             if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+                 MOTOR_Stop() ;
+                HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                
+              }
+           }
+       break;
+
+       case 4:
+             if(adc_t.sensorFilterNumbers_flag==4){
+               if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+                 MOTOR_Stop() ;
+                HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                
+              }
+             }
+       break;
+
+       case 5:
+             if(adc_t.sensorFilterNumbers_flag==5){
+                if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+
+                 MOTOR_Stop() ;
+                HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                
+              }
+             }
+       break;
+
+        case 6:
+             if(adc_t.sensorFilterNumbers_flag==6){
+               if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+                 MOTOR_Stop() ;
+                HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                
+              }
+             }
+       break;
+
+        case 7:
+             if(adc_t.sensorFilterNumbers_flag==7){
+               if(currSensorFlag !=adc_t.sensorFilterNumbers_flag){
+                 currSensorFlag = adc_t.sensorFilterNumbers_flag;
+                 MOTOR_Stop() ;
+                HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                
+              }
+             }
+       break;
+
+}
+
+}
+
+
+void ADC_InitValue(void)
+{
+   adc_t.filterNumbers=1;
+   currSensorFlag=0xff;
+   SENSOR_ON();
+   HAL_ADC_Start(&hadc1); //WT.EDIT 
 
 }
 /* USER CODE END 1 */
