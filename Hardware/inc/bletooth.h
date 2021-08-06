@@ -11,6 +11,7 @@
 #define NOW_LIGHT_IS_ON		1
 #define MAX_BUFFER_SIZE				32
 
+extern uint8_t nowLightState;
 
 
 extern uint8_t outputBuf[MAX_BUFFER_SIZE];
@@ -18,13 +19,13 @@ extern uint8_t bleOutputBuf[MAX_BUFFER_SIZE];
 extern uint8_t bleBuf[MAX_BUFFER_SIZE];
 extern uint8_t inputBuf[MAX_BUFFER_SIZE];
 
-//uint8_t inputCmd[32],bleInputCmd[32];
+extern uint32_t counter_15m;
 
 
 
 void bleRunCmd(void);
-void initBtleModule(void);
 
+void BlueCmdInit(void);
 
 
 #endif 

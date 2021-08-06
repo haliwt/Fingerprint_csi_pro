@@ -21,7 +21,7 @@
 #include "tim.h"
 
 /* USER CODE BEGIN 0 */
-
+#include "bletooth.h"
 /* USER CODE END 0 */
 
 TIM_HandleTypeDef htim1;
@@ -86,9 +86,9 @@ void MX_TIM2_Init(void)
 
   /* USER CODE END TIM2_Init 1 */
   htim2.Instance = TIM2;
-  htim2.Init.Prescaler = 24-1; //Ftimer2 = 24MHZ/(Pres+1)=1MHz
+  htim2.Init.Prescaler = 0;
   htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim2.Init.Period =1000-1; //Ftimer2-out= Ftimer2/(Period+1)=1MHZ/100= 10KHZ,timer2-out=1/1khz=1ms
+  htim2.Init.Period = 4294967295;
   htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim2) != HAL_OK)
@@ -111,7 +111,7 @@ void MX_TIM2_Init(void)
     Error_Handler();
   }
   sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 500; //Pwm cycle duty = 500/100*100%=50%
+  sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
   if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
@@ -297,7 +297,30 @@ void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef* tim_baseHandle)
 }
 
 /* USER CODE BEGIN 1 */
+/*************************************************************************
+ * Function:10ms timer1 
+*************************************************************************/
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+ {
+    static uint16_t timers,timer_1s;
+    //if(htim->Instance==htim1.Instance){
+     if(htim->Instance ==TIM1){
+        timers++;
+        if(timers>99){
+             timer_1s++;
+             timers=0;
+        }
+        if(timer_1s>899){
+           counter_15m=1;
+           timer_1s=0;
 
+        }
+
+      
+    }
+
+
+ }
 /* USER CODE END 1 */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

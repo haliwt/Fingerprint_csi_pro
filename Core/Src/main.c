@@ -24,8 +24,6 @@
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
-#include "motor.h"
-#include "bletooth.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -99,7 +97,10 @@ int main(void)
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
   ADC_InitValue();
-  HAL_UART_Receive_IT(&huart2,bleBuf,1);
+ 
+  BlueCmdInit();
+  __HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
+  HAL_TIM_Base_Start_IT(&htim1);
   /* USER CODE END 2 */
 
   /* Infinite loop */

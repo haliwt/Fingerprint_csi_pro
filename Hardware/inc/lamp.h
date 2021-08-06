@@ -26,7 +26,13 @@
 #define LAMP_POWER_Pin      GPIO_PIN_1 //Lamp suupport power EN
 #define LAMP_POWER_Port     GPIOB
 
+typedef struct{
 
+    uint8_t lampNum;
+
+}LAMP;
+
+extern LAMP lamp_t;
 
 void LAMP_InitValue(void);
 

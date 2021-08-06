@@ -15,12 +15,13 @@
 #define USART_RX_TIMEOUT	5000	// 2s
 #define USART_TX_TIMEOUT	5000	// 1s
 
-#define BOARD_ADDR		0x43	// 'C' control board
-#define BOARD_ADDR_BT	0x42	// 'B' for BT link --blue transmit
+#define BOARD_ADDR		    	0x43	// 'C' control board
+#define BOARD_ADDR_BT	    	0x42	// 'B' for BT link --blue transmit
+#define BOARD_ADDR_FILTER    	0x46    // 'F' Filter
 
 uint8_t inputBuf[MAX_BUFFER_SIZE];
 
-static uint8_t inputCmd[32],bleInputCmd[32];
+static uint8_t bleInputCmd[32];
 static uint8_t bleState;
 static uint8_t bleCmdSize;
 static uint8_t bleParaIndex;
@@ -31,13 +32,13 @@ static uint8_t bleTarget;
 static uint8_t bleIndex;
 
 static uint8_t nowLightState;
-static uint8_t currLight,currFilter; //WT.EDIT 
+
 static uint8_t bleTransferSize;
 
 uint8_t bleBuf[MAX_BUFFER_SIZE];
 uint8_t outputBuf[MAX_BUFFER_SIZE];
 uint8_t bleOutputBuf[MAX_BUFFER_SIZE];
-
+static uint8_t bleTransferSize;
 
 volatile static uint8_t transOngoingFlag; //interrupt Transmit flag bit , 1---stop,0--run
 volatile static uint8_t bleTransOngoingFlag;
@@ -47,11 +48,13 @@ static uint8_t resetCmd[]={"AT+RESET"};
 static uint8_t getAdvDataCmd[]={"AT+ADVDATA"};
 static uint8_t advData[]={"AT+ADVDATA=03FF03FF"};
 
-static uint32_t counter_15m;
+uint32_t counter_15m;
+
 static uint8_t checkParameterFlag;
 
 static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum);
 static void trigParameterUpdateImmediate(void);
+static void initBtleModule(void);
 static uint8_t checkBleModuleAVDData(void);
 /****************************************************************************************************
     **
@@ -63,68 +66,73 @@ static uint8_t checkBleModuleAVDData(void);
 ****************************************************************************************************/
  void bleRunCmd(void)
 {
-//	uint8_t transfeSize=0;
-//	uint8_t ledGroup,ledIndex;
-	uint8_t cmdType=bleInputCmd[0];
 
-	//static uint8_t keyBR_Counts=0;
-	switch(cmdType)
+	uint8_t cmdType=bleInputCmd[0];
+    switch(cmdType)
 	{
-	case 'L':	// 0x4C,led control command
+	case 'L':	// ‘L’->0x4C,led control command
 		bleTarget=bleInputCmd[1];
 		bleIndex=bleInputCmd[2]; //blue 
 		switch(bleTarget)
 		{
-		case 0:
-			if(bleIndex<MAX_LIGHT_NUMBER) //lamp 4 group
-			{
-				LAMP_WHICH_ONE_ON(bleIndex);//setEchoLight(bleIndex);
-			}
-			else if(bleIndex==MAX_LIGHT_NUMBER)
-			{
-				if(nowLightState==NOW_LIGHT_IS_ON)
+			case 0:
+			    if(bleIndex<MAX_LIGHT_NUMBER) //lamp 4 group
 				{
-					LAMP_POWER_OFF();
+					LAMP_WHICH_ONE_ON(bleIndex);//setEchoLight(bleIndex);
 				}
-				else
+				else if(bleIndex >=MAX_LIGHT_NUMBER)
 				{
-					LAMP_POWER_ON();
+					if(nowLightState==NOW_LIGHT_IS_ON)
+					{
+						LAMP_POWER_OFF();
+					}
+					else
+					{
+						LAMP_POWER_ON();
+					}
+					notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? lamp_t.lampNum  : 0xff ),adc_t.filterNumbers);
+					return;
 				}
-				notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currFilter);
-				return;
-			}
-			break;
-		case 1: //filter 7 pcs 
-			if(bleIndex<MAX_FILTER_NUMBER){
-				 adc_t.filterNumbers=bleIndex;
-				FilterNumbers_Calculate();	//setEchoFilter(bleIndex);
-			}
-			//else if(bleIndex==MAX_FILTER_NUMBER) brightnessAdj(BRIGHTNESS_ADJ_UP);
-			//else brightnessAdj(BRIGHTNESS_ADJ_DOWN);
-			break;
-		case 2:
+				break;
 		
-		default:
+			
+			default:
+				break;
+			}
+			trigParameterUpdateImmediate();
+	break;
+
+	case 'F': //filter -> 0x46
+		bleTarget=bleInputCmd[1];
+		bleIndex=bleInputCmd[2]; //blue 
+		switch(bleTarget){
+
+			case 0:
+				if(bleIndex<MAX_FILTER_NUMBER){
+					adc_t.filterNumbers=bleIndex;
+					FilterNumbers_Calculate();	//setEchoFilter(bleIndex);
+				}
+
 			break;
 		}
-		trigParameterUpdateImmediate();
-		break;
+	break;
+	
 	case 'G':	// 0x47,only get leds status
-		notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? currLight : 0xff ),currFilter);
+		notifyStatusToHost(((nowLightState==NOW_LIGHT_IS_ON) ? lamp_t.lampNum  : 0xff ),adc_t.filterNumbers);
 		break;
 	default:
 		break;
 	}
 }
 /****************************************************************************************************
-**
-*Function Name:static void initBtleModule(void)
-*Function: 
-*Input Ref: 
-*Return Ref:NO
-*
+    **
+    *Function Name:static void initBtleModule(void)
+    *Function: 
+    *Input Ref: 
+    *Return Ref:NO
+    *
 ****************************************************************************************************/
-void initBtleModule(void)
+static void initBtleModule(void)
 {
 	uint8_t tryTimes=3;
 
@@ -166,10 +174,73 @@ static uint8_t checkBleModuleAVDData(void)
 	return 0;
 }
 
+/**********************************************************************************************************
+    **
+    *Function Name:static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum,uint8_t unionNum)
+    *Function : 
+    *Input Ref:lightNum--LED filterNum -filter number
+    *Return Ref:NO
+    *
+*********************************************************************************************************/
+static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum)
+{
+	uint8_t i,crc=0xAA;
+
+	while(bleTransOngoingFlag);
+
+	bleOutputBuf[0]=BOARD_ADDR_BT;  //HEX:0x42 ->'B'
+	bleOutputBuf[1]='L'; 	// leds status 'L' -HEX:0X4C
+	bleOutputBuf[2]=lightNum; //the first group LED number on or off 
+    bleOutputBuf[3]=filterNum; //filter of number 
+	
+	for(i=2;i<4;i++) crc ^= bleOutputBuf[i];
+	bleOutputBuf[i]= crc;	// checksum
+	bleTransferSize=i+1;
+
+	if(HAL_UART_Transmit_IT(&huart2,bleOutputBuf,bleTransferSize)==HAL_OK)
+	{
+		bleTransOngoingFlag=1;
+	}
+}
+/**********************************************************************************************************
+    **
+    *Function Name:void trigParameterUpdateImmediate(void)
+    *Function : 
+    *Input Ref:lightNum--LED ,filterNum -filter number, unionNum - smart menu number
+    *Return Ref:NO
+    *
+*********************************************************************************************************/
+static void trigParameterUpdateImmediate(void)
+{
+	checkParameterFlag=1;
+	counter_15m=(uint32_t)0L;
+}
+/**********************************************************************************************************
+    **
+    *Function Name:void BlueCmdInit(void)
+    *Function : BlueTooth initialize reference parameter
+    *Input Ref:NO
+    *Return Ref:NO
+    *
+*********************************************************************************************************/
+void BlueCmdInit(void)
+{
+    
+	bleState=STATE_PREAMBLE1;
+    transOngoingFlag=0; //UART run
+	bleTransOngoingFlag=0;
+	nowLightState=NOW_LIGHT_IS_OFF;
+
+    HAL_UART_Abort(&huart2);
+	initBtleModule();
+    
+    HAL_UART_Receive_IT(&huart2,bleBuf,1);
+	
+}
 /********************************************************************************
 	**
 	*Function Name:void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
-	*Function :UART callback function  for UART interrupt for receive data
+	*Function :UART callback interrupt for receive BLUETOOTH DATA
 	*Input Ref: structure UART_HandleTypeDef pointer
 	*Return Ref:NO
 	*
@@ -182,11 +253,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		switch(bleState)
 		{
 		case STATE_PREAMBLE1:
-			if(bleBuf[0]=='M')
+			if(bleBuf[0]=='M') //‘M’ -> 0x4d
 				bleState=STATE_PREAMBLE2;
 			break;
 		case STATE_PREAMBLE2:
-			if(bleBuf[0]=='X')
+			if(bleBuf[0]=='X') //'X' ->0x58
 			{
 				bleState=STATE_ADDR;
 			}
@@ -194,7 +265,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				bleState=STATE_PREAMBLE1;
 			break;
 		case STATE_ADDR:
-			if(bleBuf[0]==BOARD_ADDR_BT)
+			if(bleBuf[0]==BOARD_ADDR_BT) //0x42->'B'
 			{
 				bleState=STATE_CMD;
 			}
@@ -202,13 +273,13 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 				bleState=STATE_PREAMBLE1;
 			break;
 		case STATE_CMD:
-			bleInputCmd[0]=bleBuf[0];
+			bleInputCmd[0]=bleBuf[0]; //蓝牙发送命令字节——> 0x4c or 0x47 or 0x41 or 0x46
 			bleCrcCheck = 0xAA ^ bleInputCmd[0];
 			//decodeFlag=1;
 			bleState=STATE_SIZE;
 			break;
 		case STATE_SIZE:
-			bleCmdSize=bleBuf[0];
+			bleCmdSize=bleBuf[0]; //蓝牙发送数据参数长度 命令字节0x4c ->长度是00～03
 			if(bleCmdSize>MAX_CMD_PARA_SIZE)	// out of range
 			{
 				bleState=STATE_PREAMBLE1;
@@ -245,44 +316,18 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 		HAL_UART_Receive_IT(&huart2,bleBuf,1);
 	}
 }
-/**********************************************************************************************************
-    **
-    *Function Name:static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum,uint8_t unionNum)
-    *Function : 
-    *Input Ref:lightNum--LED ,filterNum -filter number, unionNum - smart menu number
-    *Return Ref:NO
-    *
-*********************************************************************************************************/
-static void notifyStatusToHost(uint8_t lightNum,uint8_t filterNum)
+/********************************************************************************
+	**
+	*Function Name:void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+	*Function :UART callback function  for UART interrupt 
+	*Input Ref: structure UART_HandleTypeDef pointer
+	*Return Ref:NO
+	*
+*******************************************************************************/
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	uint8_t i,crc=0xAA;
-
-	while(bleTransOngoingFlag);
-
-	bleOutputBuf[0]=BOARD_ADDR_BT;  //HEX:42 
-	bleOutputBuf[1]='L'; 	// leds status 'L' -HEX:4C
-	bleOutputBuf[2]=lightNum; //the first group LED number on or off 
-    bleOutputBuf[3]=filterNum; //filter of number 
-	
-	for(i=2;i<4;i++) crc ^= bleOutputBuf[i];
-	bleOutputBuf[i]= crc;	// checksum
-	bleTransferSize=i+1;
-
-	if(HAL_UART_Transmit_IT(&huart2,bleOutputBuf,bleTransferSize)==HAL_OK)
+	if(huart==&huart2)
 	{
-		bleTransOngoingFlag=1;
+		bleTransOngoingFlag=0;	// reset busy flag
 	}
-}
-/**********************************************************************************************************
-    **
-    *Function Name:void trigParameterUpdateImmediate(void)
-    *Function : 
-    *Input Ref:lightNum--LED ,filterNum -filter number, unionNum - smart menu number
-    *Return Ref:NO
-    *
-*********************************************************************************************************/
-static void trigParameterUpdateImmediate(void)
-{
-	checkParameterFlag=1;
-	counter_15m=(uint32_t)0L;
 }
