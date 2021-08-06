@@ -26,7 +26,7 @@ static uint8_t bleState;
 static uint8_t bleCmdSize;
 static uint8_t bleParaIndex;
 static uint8_t bleCrcCheck;
-
+static uint8_t currFilter,currLamp;
 
 static uint8_t bleTarget;
 static uint8_t bleIndex;
@@ -58,6 +58,23 @@ static void initBtleModule(void);
 static uint8_t checkBleModuleAVDData(void);
 /****************************************************************************************************
     **
+    *Function Name:void Decode(void)
+    *Function: 
+    *Input Ref: 
+    *Return Ref:
+    *
+****************************************************************************************************/
+void Bluetooth_Decode(void)
+{
+    if(run_t.bleDecodeFlag){
+        run_t.bleDecodeFlag =0;
+		 bleRunCmd();
+
+    }
+
+}
+/****************************************************************************************************
+    **
     *Function Name:static void bleRunCmd(void)
     *Function: 
     *Input Ref: 
@@ -78,7 +95,10 @@ static uint8_t checkBleModuleAVDData(void);
 			case 0:
 			    if(bleIndex<MAX_LIGHT_NUMBER) //lamp 4 group
 				{
-					LAMP_WHICH_ONE_ON(bleIndex);//setEchoLight(bleIndex);
+                    if(currLamp != bleIndex){
+						currLamp = bleIndex;
+						LAMP_WHICH_ONE_ON(bleIndex);//setEchoLight(bleIndex);
+                    }
 				}
 				else if(bleIndex >=MAX_LIGHT_NUMBER)
 				{
@@ -104,13 +124,23 @@ static uint8_t checkBleModuleAVDData(void);
 
 	case 'F': //filter -> 0x46
 		bleTarget=bleInputCmd[1];
-		bleIndex=bleInputCmd[2]; //blue 
+		bleIndex=bleInputCmd[2]; //blue  
 		switch(bleTarget){
 
 			case 0:
 				if(bleIndex<MAX_FILTER_NUMBER){
-					adc_t.filterNumbers=bleIndex;
-					FilterNumbers_Calculate();	//setEchoFilter(bleIndex);
+					if(currFilter !=bleIndex){
+					    currFilter= bleIndex;
+						adc_t.sensorOn_flag =1;
+					    SENSOR_AND_ADC_Start(adc_t.sensorOn_flag);
+					    FilterNumbers_Calculate();	//setEchoFilter(bleIndex);
+                    }
+					else{ 
+						adc_t.sensorOn_flag =0;
+						SENSOR_AND_ADC_Start(adc_t.sensorOn_flag);
+						adc_t.filterNumbers=bleIndex;
+					}
+					
 				}
 
 			break;
@@ -226,6 +256,8 @@ static void trigParameterUpdateImmediate(void)
 void BlueCmdInit(void)
 {
     
+	currFilter = 0xff;
+	currLamp = 0xff;
 	bleState=STATE_PREAMBLE1;
     transOngoingFlag=0; //UART run
 	bleTransOngoingFlag=0;

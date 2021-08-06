@@ -62,6 +62,7 @@ typedef struct {
     uint8_t filterFilterNumberPos;
     uint8_t sensorOrigin_flag;
     uint8_t sensorFilterNumbers_flag;
+	uint8_t sensorOn_flag;
 
 }ADCVALUE;
 
@@ -79,6 +80,7 @@ void UART_TRANSMIT_TO_PC_DATA(void);
 void SENSOR_ORIGIN_DetectPos(void);
 void SENSOR_FilterNumbers_DetectPos(void);
 void FilterNumbers_Calculate(void);
+void SENSOR_AND_ADC_Start(uint8_t onoff);
 
 /* USER CODE END Prototypes */
 

@@ -423,6 +423,7 @@ void FilterNumbers_Calculate(void)
                        SENSOR_OFF();
                       adc_t.sensorOrigin_flag =1;
                       adc_t.sensorFilterNumbers_flag =1;
+					  adc_t.sensorOn_flag =0;
                   }
 
             }
@@ -436,6 +437,7 @@ void FilterNumbers_Calculate(void)
                  currSensorFlag = adc_t.sensorFilterNumbers_flag;
                 MOTOR_Stop() ;
                 HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                 adc_t.sensorOn_flag =0;
                 
               }
             }  
@@ -447,6 +449,7 @@ void FilterNumbers_Calculate(void)
                  currSensorFlag = adc_t.sensorFilterNumbers_flag;
                  MOTOR_Stop() ;
                 HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                 adc_t.sensorOn_flag =0;
                 
               }
            }
@@ -458,6 +461,7 @@ void FilterNumbers_Calculate(void)
                  currSensorFlag = adc_t.sensorFilterNumbers_flag;
                  MOTOR_Stop() ;
                 HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                 adc_t.sensorOn_flag =0;
                 
               }
              }
@@ -470,6 +474,7 @@ void FilterNumbers_Calculate(void)
 
                  MOTOR_Stop() ;
                 HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                 adc_t.sensorOn_flag =0;
                 
               }
              }
@@ -481,6 +486,7 @@ void FilterNumbers_Calculate(void)
                  currSensorFlag = adc_t.sensorFilterNumbers_flag;
                  MOTOR_Stop() ;
                 HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                 adc_t.sensorOn_flag =0;
                 
               }
              }
@@ -492,6 +498,7 @@ void FilterNumbers_Calculate(void)
                  currSensorFlag = adc_t.sensorFilterNumbers_flag;
                  MOTOR_Stop() ;
                 HAL_ADC_Stop(&hadc1); //WT.EDIT 
+                 adc_t.sensorOn_flag =0;
                 
               }
              }
@@ -510,6 +517,25 @@ void ADC_InitValue(void)
    SENSOR_ON();
    HAL_ADC_Start(&hadc1); //WT.EDIT 
     MOTOR_Run();
+
+}
+
+
+void SENSOR_AND_ADC_Start(uint8_t onoff)
+{
+    if(onoff){
+		SENSOR_ON();
+		HAL_ADC_Start(&hadc1); //WT.EDIT 
+		MOTOR_Run();
+		
+		SENSOR_ORIGIN_DetectPos();
+		SENSOR_FilterNumbers_DetectPos();
+    }
+	else{
+         SENSOR_OFF();
+		 HAL_ADC_Stop(&hadc1);
+	     MOTOR_Stop();
+    }
 
 }
 /* USER CODE END 1 */

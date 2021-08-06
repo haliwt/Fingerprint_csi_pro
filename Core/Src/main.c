@@ -101,6 +101,9 @@ int main(void)
   BlueCmdInit();
   __HAL_TIM_CLEAR_IT(&htim1,TIM_IT_UPDATE);
   HAL_TIM_Base_Start_IT(&htim1);
+ 
+   SENSOR_ORIGIN_DetectPos();
+   SENSOR_FilterNumbers_DetectPos();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,10 +113,11 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-      //UART_TRANSMIT_TO_PC_DATA();
-      SENSOR_ORIGIN_DetectPos();
-      SENSOR_FilterNumbers_DetectPos();
-      FilterNumbers_Calculate();
+//      UART_TRANSMIT_TO_PC_DATA();
+//      SENSOR_ORIGIN_DetectPos();
+//	  SENSOR_FilterNumbers_DetectPos();
+      //FilterNumbers_Calculate();
+      Bluetooth_Decode();
      // MOTOR_Run();
   }
   /* USER CODE END 3 */

@@ -27,6 +27,9 @@ void bleRunCmd(void);
 
 void BlueCmdInit(void);
 
+void Bluetooth_Decode(void);
+
+
 
 #endif 
 
